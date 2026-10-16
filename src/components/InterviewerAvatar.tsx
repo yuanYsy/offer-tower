@@ -1,5 +1,6 @@
 import { useId, useMemo } from 'react';
 import { motion } from 'framer-motion';
+import { STATIC_MODE } from '../lib/staticMode';
 
 interface Props {
   seed: string; // 主题色
@@ -81,21 +82,34 @@ export function CyberPhantom({
       </defs>
 
       <g clipPath={`url(#${uid}-clip)`}>
-        {/* 背景与背后能量涡 */}
+        {/* 背景与背后能量涡（静态模式：静止虚线环） */}
         <rect width="120" height="120" fill={`url(#${uid}-bg)`} />
-        <motion.circle
-          cx="60"
-          cy="56"
-          r="30"
-          fill="none"
-          stroke={seed}
-          strokeOpacity="0.2"
-          strokeWidth="1"
-          strokeDasharray="3 7"
-          style={{ transformOrigin: '60px 56px' }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
-        />
+        {STATIC_MODE ? (
+          <circle
+            cx="60"
+            cy="56"
+            r="30"
+            fill="none"
+            stroke={seed}
+            strokeOpacity="0.2"
+            strokeWidth="1"
+            strokeDasharray="3 7"
+          />
+        ) : (
+          <motion.circle
+            cx="60"
+            cy="56"
+            r="30"
+            fill="none"
+            stroke={seed}
+            strokeOpacity="0.2"
+            strokeWidth="1"
+            strokeDasharray="3 7"
+            style={{ transformOrigin: '60px 56px' }}
+            animate={{ rotate: 360 }}
+            transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}
+          />
+        )}
 
         {/* 兜帽虚像主体 */}
         <g>
@@ -139,29 +153,37 @@ export function CyberPhantom({
             <g filter={`url(#${uid}-glow)`}>
               <rect x="40" y="42" width="40" height="16" rx="8" fill="#030710" />
               <rect x="43" y="45.5" width="34" height="9" rx="4.5" fill={seed} fillOpacity="0.92" />
-              <motion.rect
-                x="43"
-                y="45.5"
-                width="12"
-                height="9"
-                rx="4.5"
-                fill={`url(#${uid}-visor)`}
-                animate={{ x: [43, 64] }}
-                transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-              />
+              {STATIC_MODE ? (
+                <rect x="54" y="45.5" width="12" height="9" rx="4.5" fill={`url(#${uid}-visor)`} />
+              ) : (
+                <motion.rect
+                  x="43"
+                  y="45.5"
+                  width="12"
+                  height="9"
+                  rx="4.5"
+                  fill={`url(#${uid}-visor)`}
+                  animate={{ x: [43, 64] }}
+                  transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
               <rect x="44.5" y="49.55" width="31" height="0.9" fill="#FFFFFF" fillOpacity="0.55" />
             </g>
             {/* 下颌指示灯 */}
-            <motion.rect
-              x="53"
-              y="66.5"
-              width="14"
-              height="3"
-              rx="1.5"
-              fill={seed}
-              animate={{ opacity: [0.3, 1, 0.3] }}
-              transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-            />
+            {STATIC_MODE ? (
+              <rect x="53" y="66.5" width="14" height="3" rx="1.5" fill={seed} opacity="0.85" />
+            ) : (
+              <motion.rect
+                x="53"
+                y="66.5"
+                width="14"
+                height="3"
+                rx="1.5"
+                fill={seed}
+                animate={{ opacity: [0.3, 1, 0.3] }}
+                transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
+              />
+            )}
           </>
         ) : (
           <>
@@ -205,93 +227,123 @@ export function CyberPhantom({
           {vIdx === 0 && (
             <g filter={`url(#${uid}-glow)`}>
               <rect x="45" y="50" width="30" height="6.5" rx="3.2" fill={seed} fillOpacity="0.92" />
-              <motion.rect
-                x="45"
-                y="50"
-                width="10"
-                height="6.5"
-                rx="3.2"
-                fill={`url(#${uid}-visor)`}
-                animate={{ x: [45, 66] }}
-                transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
-              />
+              {STATIC_MODE ? (
+                <rect x="55" y="50" width="10" height="6.5" rx="3.2" fill={`url(#${uid}-visor)`} />
+              ) : (
+                <motion.rect
+                  x="45"
+                  y="50"
+                  width="10"
+                  height="6.5"
+                  rx="3.2"
+                  fill={`url(#${uid}-visor)`}
+                  animate={{ x: [45, 66] }}
+                  transition={{ duration: 2.6, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
             </g>
           )}
           {vIdx === 1 && (
             <g filter={`url(#${uid}-glow)`}>
-              <motion.circle
-                cx="52"
-                cy="53"
-                r="2.8"
-                fill={seed}
-                animate={{ opacity: [1, 0.35, 1] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-              />
-              <motion.circle
-                cx="68"
-                cy="53"
-                r="2.8"
-                fill={seed}
-                animate={{ opacity: [0.35, 1, 0.35] }}
-                transition={{ duration: 1.8, repeat: Infinity }}
-              />
+              {STATIC_MODE && (
+                <>
+                  <circle cx="52" cy="53" r="2.8" fill={seed} opacity="0.9" />
+                  <circle cx="68" cy="53" r="2.8" fill={seed} opacity="0.9" />
+                </>
+              )}
+              {!STATIC_MODE && (
+                <>
+                  <motion.circle
+                    cx="52"
+                    cy="53"
+                    r="2.8"
+                    fill={seed}
+                    animate={{ opacity: [1, 0.35, 1] }}
+                    transition={{ duration: 1.8, repeat: Infinity }}
+                  />
+                  <motion.circle
+                    cx="68"
+                    cy="53"
+                    r="2.8"
+                    fill={seed}
+                    animate={{ opacity: [0.35, 1, 0.35] }}
+                    transition={{ duration: 1.8, repeat: Infinity }}
+                  />
+                </>
+              )}
               <rect x="46" y="51.6" width="28" height="1.2" rx="0.6" fill={seed} fillOpacity="0.5" />
             </g>
           )}
           {vIdx === 2 && (
             <g filter={`url(#${uid}-glow)`}>
               <path d="M46,55 L60,46 L74,55 L60,60 Z" fill={seed} fillOpacity="0.92" />
-              <motion.path
-                d="M46,55 L60,46 L74,55"
-                fill="none"
-                stroke="#FFFFFF"
-                strokeOpacity="0.9"
-                strokeWidth="1"
-                animate={{ pathLength: [0, 1], opacity: [0, 0.9, 0] }}
-                transition={{ duration: 2.2, repeat: Infinity }}
-              />
+              {!STATIC_MODE && (
+                <motion.path
+                  d="M46,55 L60,46 L74,55"
+                  fill="none"
+                  stroke="#FFFFFF"
+                  strokeOpacity="0.9"
+                  strokeWidth="1"
+                  animate={{ pathLength: [0, 1], opacity: [0, 0.9, 0] }}
+                  transition={{ duration: 2.2, repeat: Infinity }}
+                />
+              )}
             </g>
           )}
-          {/* 下颌语音波纹（说话感的呼吸灯） */}
-          <motion.path
-            d="M52,68 h16"
-            stroke={seed}
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            fill="none"
-            animate={{ opacity: [0.15, 0.8, 0.15], scaleX: [0.6, 1, 0.6] }}
-            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
-            style={{ transformOrigin: '60px 68px' }}
-          />
+          {/* 下颌语音波纹（静态模式：固定微光） */}
+          {STATIC_MODE ? (
+            <path
+              d="M52,68 h16"
+              stroke={seed}
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              fill="none"
+              opacity="0.45"
+            />
+          ) : (
+            <motion.path
+              d="M52,68 h16"
+              stroke={seed}
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              fill="none"
+              animate={{ opacity: [0.15, 0.8, 0.15], scaleX: [0.6, 1, 0.6] }}
+              transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut' }}
+              style={{ transformOrigin: '60px 68px' }}
+            />
+          )}
           </>
         )}
         </g>
 
-        {/* 上浮数据粒 */}
-        {MOTES.map((m, i) => (
-          <motion.circle
-            key={i}
-            cx={m.x}
-            r={m.r}
-            fill={seed}
-            initial={{ cy: 104, opacity: 0 }}
-            animate={{ cy: [104, 30], opacity: [0, 0.85, 0] }}
-            transition={{ duration: m.dur, repeat: Infinity, delay: m.delay, ease: 'easeIn' }}
-          />
-        ))}
+        {/* 上浮数据粒（静态模式：不渲染） */}
+        {!STATIC_MODE &&
+          MOTES.map((m, i) => (
+            <motion.circle
+              key={i}
+              cx={m.x}
+              r={m.r}
+              fill={seed}
+              initial={{ cy: 104, opacity: 0 }}
+              animate={{ cy: [104, 30], opacity: [0, 0.85, 0] }}
+              transition={{ duration: m.dur, repeat: Infinity, delay: m.delay, ease: 'easeIn' }}
+            />
+          ))}
 
         {/* 扫描线 + 底部消隐 */}
         <rect width="120" height="120" fill={`url(#${uid}-scan)`} />
         <rect y="86" width="120" height="34" fill={`url(#${uid}-fade)`} />
-        {/* 周期掠过的横向全息扫描束 */}
-        <motion.rect
-          width="120"
-          height="10"
-          fill={seed}
-          fillOpacity="0.1"
-          animate={{ y: [-12, 122] }}
-          transition={{ duration: 3.8, repeat: Infinity, ease: 'linear' }}
-        />
+        {/* 周期掠过的横向全息扫描束（静态模式：不渲染） */}
+        {!STATIC_MODE && (
+          <motion.rect
+            width="120"
+            height="10"
+            fill={seed}
+            fillOpacity="0.1"
+            animate={{ y: [-12, 122] }}
+            transition={{ duration: 3.8, repeat: Infinity, ease: 'linear' }}
+          />
+        )}
       </g>
       {/* 外圈描边 */}
       <circle cx="60" cy="60" r="57.2" fill="none" stroke={seed} strokeOpacity="0.35" strokeWidth="1.4" />

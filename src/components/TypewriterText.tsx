@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { STATIC_MODE } from '../lib/staticMode';
 
 interface Props {
   text: string;
@@ -32,6 +33,11 @@ export default function TypewriterText({
     doneRef.current = false;
     setLen(0);
     if (!start) return;
+    // 纯静态模式：直接显示全文，不启动逐字定时器
+    if (STATIC_MODE) {
+      setLen(text.length);
+      return;
+    }
     timerRef.current = window.setInterval(() => {
       setLen((n) => Math.min(n + 1, text.length));
     }, speed);

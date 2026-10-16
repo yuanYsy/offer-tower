@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { motion } from 'framer-motion';
 import { X } from 'lucide-react';
+import { STATIC_MODE } from '../lib/staticMode';
 
 interface Props {
   children: ReactNode;
@@ -39,8 +40,8 @@ export default function HudPanel({
           <motion.span
             className="h-1.5 w-1.5 shrink-0 rounded-full"
             style={{ background: accent, boxShadow: `0 0 10px ${accent}` }}
-            animate={{ opacity: [1, 0.3, 1] }}
-            transition={{ duration: 1.8, repeat: Infinity }}
+            animate={{ opacity: STATIC_MODE ? 1 : [1, 0.3, 1] }}
+            transition={STATIC_MODE ? undefined : { duration: 1.8, repeat: Infinity }}
           />
           {title && (
             <span

@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, MotionConfig, useAnimation } from 'framer-motion';
+import { AnimatePresence, motion, useAnimation } from 'framer-motion';
 import { Rocket, RotateCcw, Play, ArrowRight } from 'lucide-react';
 import { useGameStore } from '../store/useGameStore';
 import PlayerAvatar, { AVATARS } from '../components/PlayerAvatar';
@@ -8,6 +8,7 @@ import HoloTitle, { HoloSubtitle } from '../components/HoloTitle';
 import HoloPlanet from '../components/HoloPlanet';
 import HudPanel from '../components/HudPanel';
 import useIsMobile from '../hooks/useIsMobile';
+import { STATIC_MODE } from '../lib/staticMode';
 
 // ===== 星门光环配置：多层深青 / 紫色环 + 能量弧 =====
 interface Ring {
@@ -95,7 +96,8 @@ export default function Start() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-x-hidden px-4 py-10">
+    // 单屏布局：标题 + 星门 + 挑战者档案在同一屏内紧凑排布，无需向下滚动
+    <div className="relative flex h-[100dvh] flex-col items-center justify-center overflow-x-hidden px-4 py-2">
       {/* 局部星云加深（星门背后） */}
       <div
         className="pointer-events-none absolute inset-0 -z-[1]"
@@ -115,20 +117,23 @@ export default function Start() {
         <HoloTitle
           text="OFFER 星塔"
           latin="OFFER TOWER · EPISODE 01"
-          className="text-4xl sm:text-5xl md:text-6xl"
+          className="text-3xl sm:text-4xl md:text-5xl"
         />
-        <div className="mt-5 flex justify-center">
-          <HoloSubtitle text="直面恐惧，登顶拿 Offer" className="text-sm sm:text-lg md:text-2xl" />
+        <div className="mt-2.5 flex justify-center">
+          <HoloSubtitle text="直面恐惧，登顶拿 Offer" className="text-sm sm:text-lg" />
         </div>
-        <p className="mt-4 max-w-full px-2 text-center font-hud text-[10px] font-semibold tracking-[0.18em] text-white/45 sm:text-[11px] sm:tracking-[0.42em]">
+        <p className="mt-2 max-w-full px-2 text-center font-hud text-[10px] font-semibold tracking-[0.18em] text-white/45 sm:tracking-[0.42em]">
           08 FLOORS · 77 QUESTIONS · 01 OFFER
         </p>
       </motion.div>
 
-      {/* ===== 全息数据星门 ===== */}
-      <div className="relative z-10 flex items-center justify-center" style={{ perspective: 1000 }}>
-        {/* 移动端：星门全部无限动画降级为静态（reducedMotion 砍掉 repeat:Infinity 的旋转/脉冲） */}
-        <MotionConfig reducedMotion={isMobile ? 'always' : 'user'}>
+      {/* ===== 全息数据星门（尺寸随视口高度自适应，压缩垂直留白） ===== */}
+      <div
+        className="relative z-10 flex shrink-0 items-center justify-center"
+        style={{ perspective: 1000 }}
+      >
+        {/* 继承全局 MotionConfig（纯静态模式下循环动画全部冻结） */}
+        <>
           {/* 跃迁光柱 */}
           <motion.div
             className="pointer-events-none absolute bottom-0 h-[70%] w-40"
@@ -137,11 +142,13 @@ export default function Start() {
                 'linear-gradient(0deg, rgba(34,211,238,0.34), rgba(139,92,246,0.16) 55%, transparent)',
               filter: 'blur(18px)',
             }}
-            animate={{ opacity: opening ? 1 : [0.35, 0.6, 0.35], scaleY: opening ? 1.6 : 1 }}
+            animate={{ opacity: opening ? 1 : STATIC_MODE ? 0.45 : [0.35, 0.6, 0.35], scaleY: opening ? 1.6 : 1 }}
             transition={
               opening
                 ? { duration: 0.7 }
-                : { duration: 4.2, repeat: Infinity, ease: 'easeInOut' }
+                : STATIC_MODE
+                  ? undefined
+                  : { duration: 4.2, repeat: Infinity, ease: 'easeInOut' }
             }
           />
 
@@ -151,7 +158,7 @@ export default function Start() {
             onHoverStart={() => setHovered(true)}
             onHoverEnd={() => setHovered(false)}
             aria-label="点击星门进入星塔"
-            className="relative mt-8 h-[290px] w-[290px] cursor-pointer sm:h-[360px] sm:w-[360px] lg:h-[420px] lg:w-[420px]"
+            className="relative mt-2 h-[min(28vh,260px)] w-[min(28vh,260px)] cursor-pointer sm:h-[min(32vh,340px)] sm:w-[min(32vh,340px)]"
             animate={{
               scale: opening ? 2.4 : hovered ? 1.05 : 1,
               opacity: opening ? 0 : 1,
@@ -193,23 +200,15 @@ export default function Start() {
                   cy="200"
                   r={92}
                   fill="url(#gateCore)"
-                  animate={{ opacity: hovered ? [0.55, 0.95, 0.55] : [0.4, 0.68, 0.4] }}
-                  transition={{ duration: hovered ? 1.6 : 3, repeat: Infinity, ease: 'easeInOut' }}
+                  animate={{ opacity: hovered ? (STATIC_MODE ? 0.9 : [0.55, 0.95, 0.55]) : STATIC_MODE ? 0.55 : [0.4, 0.68, 0.4] }}
+                  transition={{ duration: hovered ? 1.6 : 3, repeat: STATIC_MODE ? 0 : Infinity, ease: 'easeInOut' }}
                 />
 
-                {/* 多层旋转光环 */}
-                {RINGS.map((ring, i) => (
-                  <motion.g
-                    key={i}
-                    style={{ transformOrigin: '200px 200px' }}
-                    animate={{ rotate: ring.dir * 360 }}
-                    transition={{
-                      duration: hovered ? ring.dur * 0.42 : ring.dur,
-                      repeat: Infinity,
-                      ease: 'linear',
-                    }}
-                  >
+                {/* 多层旋转光环（静态模式：不渲染旋转 motion.g，仅静态圆环） */}
+                {RINGS.map((ring, i) =>
+                  STATIC_MODE ? (
                     <circle
+                      key={`sr-${i}`}
                       cx="200"
                       cy="200"
                       r={ring.r}
@@ -221,31 +220,56 @@ export default function Start() {
                       strokeLinecap="round"
                       filter={ring.blur ? `url(#gateBlur${ring.blur})` : undefined}
                     />
-                  </motion.g>
-                ))}
+                  ) : (
+                    <motion.g
+                      key={i}
+                      style={{ transformOrigin: '200px 200px' }}
+                      animate={{ rotate: ring.dir * 360 }}
+                      transition={{
+                        duration: hovered ? ring.dur * 0.42 : ring.dur,
+                        repeat: Infinity,
+                        ease: 'linear',
+                      }}
+                    >
+                      <circle
+                        cx="200"
+                        cy="200"
+                        r={ring.r}
+                        fill="none"
+                        stroke={ring.color}
+                        strokeWidth={ring.w}
+                        strokeDasharray={ring.dash}
+                        strokeOpacity={ring.o}
+                        strokeLinecap="round"
+                        filter={ring.blur ? `url(#gateBlur${ring.blur})` : undefined}
+                      />
+                    </motion.g>
+                  ),
+                )}
 
-                {/* 向核心汇聚的能量火花 */}
-                {SPARKS.map((s, i) => (
-                  <motion.circle
-                    key={`sp-${i}`}
-                    r={1.8}
-                    fill={s.color}
-                    initial={false}
-                    animate={{
-                      cx: [s.x0, 200],
-                      cy: [s.y0, 200],
-                      opacity: [0, 0.95, 0],
-                    }}
-                    transition={{
-                      duration: hovered ? 1.1 : 2.4,
-                      repeat: Infinity,
-                      delay: s.delay,
-                      ease: 'easeIn',
-                      times: [0, 0.75, 1],
-                    }}
-                    filter="url(#gateBlur3)"
-                  />
-                ))}
+                {/* 向核心汇聚的能量火花（cx/cy 属性动画不被 reducedMotion 冻结，静态模式直接卸载） */}
+                {!STATIC_MODE &&
+                  SPARKS.map((s, i) => (
+                    <motion.circle
+                      key={`sp-${i}`}
+                      r={1.8}
+                      fill={s.color}
+                      initial={false}
+                      animate={{
+                        cx: [s.x0, 200],
+                        cy: [s.y0, 200],
+                        opacity: [0, 0.95, 0],
+                      }}
+                      transition={{
+                        duration: hovered ? 1.1 : 2.4,
+                        repeat: Infinity,
+                        delay: s.delay,
+                        ease: 'easeIn',
+                        times: [0, 0.75, 1],
+                      }}
+                      filter="url(#gateBlur3)"
+                    />
+                  ))}
               </svg>
             </motion.div>
 
@@ -289,7 +313,7 @@ export default function Start() {
                     : 'drop-shadow(0 0 26px rgba(34,211,238,0.35))',
                 }}
               >
-                <HoloPlanet size={205} rings={0} hue="#9FE8FF" live={!isMobile} flare={!isMobile} />
+                <HoloPlanet size={205} rings={0} hue="#9FE8FF" live={!isMobile && !STATIC_MODE} flare={!isMobile && !STATIC_MODE} />
                 <span
                   className="absolute bottom-1 font-mono text-[9px] font-bold tracking-[0.28em] text-white/90"
                   style={{ textShadow: '0 0 10px rgba(34,211,238,1)' }}
@@ -299,24 +323,24 @@ export default function Start() {
               </motion.div>
             </div>
           </motion.button>
-        </MotionConfig>
+        </>
       </div>
 
       {/* 星门提示 */}
       <motion.p
-        className="relative z-10 mt-5 font-mono text-[11px] tracking-[0.3em]"
+        className="relative z-10 mt-2 font-mono text-[11px] tracking-[0.3em]"
         style={{ color: canEnter ? '#22D3EE' : '#475569' }}
         animate={{
-          opacity: opening ? 0 : canEnter ? [0.55, 1, 0.55] : 1,
+          opacity: opening ? 0 : canEnter ? (STATIC_MODE ? 0.9 : [0.55, 1, 0.55]) : 1,
         }}
-        transition={{ duration: 2.4, repeat: isMobile ? 0 : Infinity }}
+        transition={{ duration: 2.4, repeat: STATIC_MODE || isMobile ? 0 : Infinity }}
       >
         {canEnter ? '点击星门 · 启动跃迁' : '先留下代号，星门才会开启'}
       </motion.p>
 
       {/* ===== 挑战者档案 HUD 面板 ===== */}
       <motion.div
-        className="relative z-10 mt-6 w-full max-w-md"
+        className="relative z-10 mt-3 w-full max-w-md shrink-0"
         initial={{ opacity: 0, y: 26 }}
         animate={{ opacity: opening ? 0 : 1, y: 0 }}
         transition={{ delay: 0.22, duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
@@ -331,8 +355,8 @@ export default function Start() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <div className="mb-5 flex items-center gap-3">
-                    <PlayerAvatar avatarId={player!.avatarId} size={44} />
+                  <div className="mb-3 flex items-center gap-3">
+                    <PlayerAvatar avatarId={player!.avatarId} size={40} />
                     <div>
                       <div className="font-display font-semibold tracking-wide">{player!.nickname}</div>
                       <div className="font-mono text-[11px] text-txt-secondary">
@@ -343,10 +367,10 @@ export default function Start() {
                       SAVE OK
                     </span>
                   </div>
-                  <div className="flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
                     <button
                       onClick={continueJourney}
-                      className="btn-neon flex items-center justify-center gap-2 px-6 py-3 text-base"
+                      className="btn-neon flex items-center justify-center gap-2 px-6 py-2.5 text-base"
                     >
                       <Play size={18} /> 继续上次的征程
                     </button>
@@ -354,13 +378,13 @@ export default function Start() {
                       <div className="flex gap-2">
                         <button
                           onClick={restart}
-                          className="flex-1 rounded-btn border border-neon-rose/50 bg-neon-rose/10 px-4 py-2.5 text-sm text-neon-rose transition-all hover:shadow-neon-rose"
+                          className="flex-1 rounded-btn border border-neon-rose/50 bg-neon-rose/10 px-4 py-2 text-sm text-neon-rose transition-all hover:shadow-neon-rose"
                         >
                           确认清空存档
                         </button>
                         <button
                           onClick={() => setConfirmReset(false)}
-                          className="btn-ghost flex-1 px-4 py-2.5 text-sm"
+                          className="btn-ghost flex-1 px-4 py-2 text-sm"
                         >
                           再想想
                         </button>
@@ -368,7 +392,7 @@ export default function Start() {
                     ) : (
                       <button
                         onClick={() => setConfirmReset(true)}
-                        className="btn-ghost flex items-center justify-center gap-2 px-6 py-2.5 text-sm"
+                        className="btn-ghost flex items-center justify-center gap-2 px-6 py-2 text-sm"
                       >
                         <RotateCcw size={15} /> 重新开始
                       </button>
@@ -382,7 +406,7 @@ export default function Start() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                 >
-                  <label className="mb-2 block font-mono text-[10px] tracking-[0.3em] text-txt-secondary">
+                  <label className="mb-1.5 block font-mono text-[10px] tracking-[0.3em] text-txt-secondary">
                     你的代号 / NICKNAME
                   </label>
                   <input
@@ -392,20 +416,20 @@ export default function Start() {
                     onKeyDown={(e) => e.key === 'Enter' && enter()}
                     maxLength={12}
                     placeholder="输入昵称，挑战者"
-                    className="w-full rounded-btn border border-glass bg-white/5 px-4 py-3 text-sm outline-none transition-all placeholder:text-txt-muted focus:border-neon-cyan/60 focus:bg-neon-cyan/5 focus:shadow-neon-cyan-sm"
+                    className="w-full rounded-btn border border-glass bg-white/5 px-4 py-2.5 text-sm outline-none transition-all placeholder:text-txt-muted focus:border-neon-cyan/60 focus:bg-neon-cyan/5 focus:shadow-neon-cyan-sm"
                   />
 
-                  <label className="mb-2 mt-5 block font-mono text-[10px] tracking-[0.3em] text-txt-secondary">
+                  <label className="mb-1.5 mt-3 block font-mono text-[10px] tracking-[0.3em] text-txt-secondary">
                     选择你的化身 / AVATAR
                   </label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1.5">
                     {AVATARS.map((a) => {
                       const on = avatarId === a.id;
                       return (
                         <button
                           key={a.id}
                           onClick={() => setAvatarId(a.id)}
-                          className="flex flex-col items-center gap-1.5 rounded-card border p-3 transition-all"
+                          className="flex flex-col items-center gap-1 rounded-card border p-2 transition-all"
                           style={{
                             borderColor: on ? `${a.accent}AA` : 'rgba(255,255,255,0.08)',
                             background: on
@@ -414,7 +438,7 @@ export default function Start() {
                             boxShadow: on ? `0 0 18px -4px ${a.accent}AA` : 'none',
                           }}
                         >
-                          <PlayerAvatar avatarId={a.id} size={40} />
+                          <PlayerAvatar avatarId={a.id} size={34} />
                           <span className="text-xs font-semibold">{a.name}</span>
                           <span className="text-[10px] text-txt-muted">{a.desc}</span>
                         </button>
@@ -425,7 +449,7 @@ export default function Start() {
                   <button
                     onClick={enter}
                     disabled={!canEnter}
-                    className="btn-neon mt-6 flex w-full items-center justify-center gap-2 px-6 py-3.5 text-base"
+                    className="btn-neon mt-4 flex w-full items-center justify-center gap-2 px-6 py-3 text-base"
                   >
                     <Rocket size={18} /> 启动跃迁 · 进入星塔
                     <ArrowRight size={16} />

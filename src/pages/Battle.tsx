@@ -125,6 +125,7 @@ export default function Battle() {
   useEffect(() => {
     if (phase !== 'prepare') return;
     const timer = window.setInterval(() => {
+      if (document.hidden) return; // 后台标签页降载：暂停倒计时
       setPrepareLeft((s) => {
         if (s <= 0.2) {
           window.clearInterval(timer);
@@ -141,6 +142,7 @@ export default function Battle() {
   useEffect(() => {
     if (phase !== 'oral') return;
     const timer = window.setInterval(() => {
+      if (document.hidden) return; // 后台标签页降载：暂停倒计时
       setLeft((s) => {
         if (s <= 0.2) {
           window.clearInterval(timer);

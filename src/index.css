@@ -78,6 +78,7 @@ body {
   from {
     transform: translate3d(-3%, -2%, 0) scale(1.04);
   }
+
   to {
     transform: translate3d(4%, 3%, 0) scale(1.16);
   }
@@ -108,15 +109,14 @@ body {
   z-index: 61;
   pointer-events: none;
   opacity: 0.5;
-  background-image: repeating-linear-gradient(
-    0deg,
-    rgba(150, 220, 255, 0.028) 0 1px,
-    transparent 1px 3px
-  );
+  background-image: repeating-linear-gradient(0deg,
+      rgba(150, 220, 255, 0.028) 0 1px,
+      transparent 1px 3px);
 }
 
 /* ============ 通用组件类 ============ */
 @layer components {
+
   /* 玻璃拟态 → 全息 HUD 玻璃 */
   .glass,
   .hud {
@@ -162,19 +162,19 @@ body {
     pointer-events: none;
     border-radius: inherit;
     opacity: 0.55;
-    background-image: repeating-linear-gradient(
-      0deg,
-      rgba(150, 220, 255, 0.035) 0 1px,
-      transparent 1px 3px
-    );
+    background-image: repeating-linear-gradient(0deg,
+        rgba(150, 220, 255, 0.035) 0 1px,
+        transparent 1px 3px);
   }
 
   .hud-violet {
     --hud-accent: #8b5cf6;
   }
+
   .hud-gold {
     --hud-accent: #fbbf24;
   }
+
   .hud-rose {
     --hud-accent: #fb7185;
   }
@@ -186,13 +186,16 @@ body {
     color: var(--text-primary);
     box-shadow: 0 0 24px rgba(34, 211, 238, 0.4), inset 0 1px 0 rgba(190, 232, 255, 0.18);
   }
+
   .btn-neon:hover {
     box-shadow: 0 0 36px rgba(34, 211, 238, 0.6), inset 0 1px 0 rgba(190, 232, 255, 0.25);
     transform: translateY(-1px);
   }
+
   .btn-neon:active {
     transform: translateY(0) scale(0.98);
   }
+
   .btn-neon:disabled {
     opacity: 0.4;
     box-shadow: none;
@@ -205,10 +208,12 @@ body {
     color: var(--text-secondary);
     background: rgba(255, 255, 255, 0.03);
   }
+
   .btn-ghost:hover {
     color: var(--text-primary);
     border-color: rgba(34, 211, 238, 0.4);
   }
+
   .btn-ghost:active {
     transform: scale(0.98);
   }
@@ -228,19 +233,16 @@ body {
 
   /* 金属 / 全息底纹文字（冷银蓝，对齐参考图） */
   .metal-text {
-    background: linear-gradient(
-      178deg,
-      #ffffff 0%,
-      #bfe9ff 26%,
-      #ffffff 44%,
-      #4fe3ff 62%,
-      #cfefff 100%
-    );
+    background: linear-gradient(178deg,
+        #ffffff 0%,
+        #bfe9ff 26%,
+        #ffffff 44%,
+        #4fe3ff 62%,
+        #cfefff 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    filter: drop-shadow(0 0 12px rgba(79, 227, 255, 0.45))
-      drop-shadow(0 2px 1px rgba(0, 0, 0, 0.9));
+    filter: drop-shadow(0 0 12px rgba(79, 227, 255, 0.45)) drop-shadow(0 2px 1px rgba(0, 0, 0, 0.9));
   }
 
   /* 宽字距拉丁副行（EPISODE.01 式） */
@@ -252,25 +254,32 @@ body {
 
 /* ============ 故障 / 霓虹闪烁 ============ */
 @keyframes glitch-flicker {
+
   0%,
   100% {
     opacity: 1;
   }
+
   88% {
     opacity: 1;
   }
+
   89% {
     opacity: 0.42;
   }
+
   90% {
     opacity: 1;
   }
+
   93% {
     opacity: 0.68;
   }
+
   94% {
     opacity: 1;
   }
+
   97% {
     opacity: 0.85;
   }
@@ -281,11 +290,13 @@ body {
 }
 
 @keyframes neon-breathe {
+
   0%,
   100% {
     opacity: 0.75;
     filter: brightness(1);
   }
+
   50% {
     opacity: 1;
     filter: brightness(1.3);
@@ -294,10 +305,12 @@ body {
 
 /* ============ 未来办公场景（OfficeScene）光效 ============ */
 @keyframes scene-pulse {
+
   0%,
   100% {
     opacity: 0.5;
   }
+
   50% {
     opacity: 1;
   }
@@ -306,6 +319,7 @@ body {
 .scene-pulse {
   animation: scene-pulse 6.5s ease-in-out infinite;
 }
+
 .scene-pulse-slow {
   animation: scene-pulse 11s ease-in-out infinite;
 }
@@ -315,10 +329,12 @@ body {
   from {
     transform: translate3d(0, 0, 0);
   }
+
   to {
     transform: translate3d(-18px, 10px, 0);
   }
 }
+
 .scene-drift {
   animation: scene-drift 26s ease-in-out infinite alternate;
 }
@@ -329,40 +345,48 @@ body {
   from {
     stroke-dashoffset: 0;
   }
+
   to {
     stroke-dashoffset: -504;
   }
 }
+
 .planet-flow {
   animation: planet-flow 7s linear infinite;
 }
 
 /* 星尘闪烁 */
 @keyframes planet-spark {
+
   0%,
   100% {
     opacity: 0.18;
   }
+
   50% {
     opacity: 1;
   }
 }
+
 .planet-spark {
   animation: planet-spark 3.6s ease-in-out infinite;
 }
 
 /* 顶部耀斑呼吸 */
 @keyframes planet-flare {
+
   0%,
   100% {
     opacity: 0.6;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.07);
   }
 }
+
 .planet-flare {
   animation: planet-flare 4.6s ease-in-out infinite;
   transform-box: fill-box;
@@ -387,13 +411,16 @@ body {
   width: 8px;
   height: 8px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: rgba(120, 200, 255, 0.16);
   border-radius: 999px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(34, 211, 238, 0.4);
 }
@@ -410,40 +437,43 @@ body {
   text-shadow: 0 0 12px rgba(34, 211, 238, 0.5);
 }
 
-/* ============ 移动端性能降级：彻底关闭高消耗渲染（防闪烁/卡顿） ============ */
-@media (max-width: 767px) {
-  /* 1. 所有 CSS 无限动画一次性关闭（星云漂移/场景脉冲/星球流光/霓虹呼吸） */
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01s !important;
-    animation-iteration-count: 1 !important;
-    /* 复杂 box-shadow 发光全部移除，保留纯色与边框层次 */
-    box-shadow: none !important;
-  }
+/* ============ 纯静态展示模式：全站关闭动画与过渡（消除闪烁/重绘抖动、降低 CPU） ============ */
+*,
+*::before,
+*::after {
+  animation: none !important;
+  transition: none !important;
+}
 
-  /* 2. backdrop-filter 是移动端最大 GPU 开销：降级为简单半透明纯色底 */
+/* ============ 移动端额外降级：移除 GPU 高消耗特效 ============ */
+@media (max-width: 767px) {
+
+  /* backdrop-filter 是移动端最大 GPU 开销：降级为简单半透明纯色底 */
   .glass,
   .hud,
   [class*='backdrop-blur'] {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+
   .glass,
   .hud {
     background: rgba(10, 20, 38, 0.88) !important;
   }
 
-  /* 3. 内联 filter: blur(...) 与 SVG 高斯滤镜（feGaussianBlur）全部关闭 */
+  /* 复杂发光阴影与模糊滤镜全部移除 */
+  *,
+  *::before,
+  *::after {
+    box-shadow: none !important;
+  }
+
   [style*='blur'],
   [filter] {
     filter: none !important;
   }
-  .metal-text {
-    filter: none !important;
-  }
 
-  /* 4. 标题保留静态辉光（无逐帧动画） */
+  /* 标题保留静态辉光 */
   .holo-title {
     text-shadow:
       0 -1.4px 0 rgba(255, 255, 255, 0.7),
@@ -451,7 +481,6 @@ body {
       0 0 14px rgba(79, 227, 255, 0.45);
   }
 
-  /* 5. 答案关键词高亮去掉发光 */
   .kw {
     text-shadow: none;
   }

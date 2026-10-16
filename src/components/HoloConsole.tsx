@@ -6,6 +6,7 @@ import { allCards } from '../data/cards';
 import { graphNodes } from '../data/knowledgeGraph';
 import { useGameStore } from '../store/useGameStore';
 import useIsMobile from '../hooks/useIsMobile';
+import { STATIC_MODE } from '../lib/staticMode';
 import CardGallery from './CardGallery';
 import KnowledgeGraph from './KnowledgeGraph';
 import HudPanel from './HudPanel';
@@ -55,18 +56,14 @@ export function HoloConsole({ accent, clearedCount, onOpenCards, onOpenGraph, on
     },
   ];
 
-  // Portal 到 body：脱离 framer-motion 变换容器，fixed bottom-0 真正锚定视口底部（修复移动端截断）
-  return createPortal(
-    <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-3"
-      style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
-    >
+  // 内嵌在星塔页底部：与标题 / 星球地图同处一个视觉平面，不再 fixed 悬浮覆盖地图
+  return (
+    <div className="flex shrink-0 justify-center pt-1">
       <motion.div
-        initial={{ y: 80, opacity: 0 }}
+        initial={{ y: 40, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 220, damping: 26, delay: 0.2 }}
-        className="hud pointer-events-auto flex items-stretch gap-1.5 p-2 md:gap-2.5"
-        style={{ willChange: 'transform, opacity' }}
+        className="hud pointer-events-auto flex items-stretch gap-1.5 p-1.5 md:gap-2 md:p-2"
       >
         {/* 左端状态灯 */}
         <div className="hidden flex-col justify-center gap-1 px-2 md:flex">
@@ -74,8 +71,8 @@ export function HoloConsole({ accent, clearedCount, onOpenCards, onOpenGraph, on
           <motion.span
             className="h-1 w-10 rounded-full"
             style={{ background: `linear-gradient(90deg, #22D3EE, #8B5CF6)` }}
-            animate={{ opacity: isMobile ? 0.7 : [0.35, 1, 0.35] }}
-            transition={{ duration: 2.2, repeat: isMobile ? 0 : Infinity }}
+            animate={{ opacity: STATIC_MODE || isMobile ? 0.7 : [0.35, 1, 0.35] }}
+            transition={{ duration: 2.2, repeat: STATIC_MODE || isMobile ? 0 : Infinity }}
           />
         </div>
 
@@ -85,7 +82,7 @@ export function HoloConsole({ accent, clearedCount, onOpenCards, onOpenGraph, on
             <button
               key={it.key}
               onClick={it.onClick}
-              className="group relative flex min-w-[92px] items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-2 text-left transition-all active:scale-95 md:min-w-[132px] md:px-3.5 md:py-2.5"
+              className="group relative flex min-w-[92px] items-center gap-2.5 overflow-hidden rounded-xl border px-3 py-1.5 text-left transition-all active:scale-95 md:min-w-[132px] md:px-3.5 md:py-2"
               style={{
                 borderColor: `${it.color}55`,
                 background: `linear-gradient(150deg, ${it.color}1F, rgba(8,14,26,0.55))`,
@@ -137,8 +134,7 @@ export function HoloConsole({ accent, clearedCount, onOpenCards, onOpenGraph, on
           </span>
         </div>
       </motion.div>
-    </div>,
-    document.body,
+    </div>
   );
 }
 

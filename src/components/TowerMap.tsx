@@ -34,6 +34,7 @@ import OfferLetter from './OfferLetter';
 import { DeckSwitcher, HoloConsole } from './HoloConsole';
 import { useSound } from '../hooks/useSound';
 import useIsMobile from '../hooks/useIsMobile';
+import { STATIC_MODE } from '../lib/staticMode';
 
 // 楼层特色图标
 const FLOOR_ICON: Record<string, typeof Code2> = {
@@ -61,12 +62,15 @@ export interface MapNode {
 }
 
 // 画布尺寸（横向星域航线：1F 在左，8F 在右）
+// MAP_H 收紧到刚好包住蜿蜒航线的上下极值，避免画布上下出现大片空白
 export const MAP_W = 1920;
-export const MAP_H = 480;
+export const MAP_H = 570;
+// 缩放下限：窄屏（手机）按宽度铺满会让星球小到不可读，此时保留可滚动的最小可读尺寸
+const MIN_MAP_SCALE = 0.34;
 const NODE_LEFT = 170; // 1F 距左侧距离
 const NODE_GAP = 208;
-const PATH_Y = MAP_H / 2; // 主路径中线
-const AMP = 105; // 蜿蜒振幅
+const PATH_Y = 290; // 主路径中线（= MAP_H / 2，航线垂直居中）
+const AMP = 140; // 蜿蜒振幅
 // Offer 大门（航线尽头）
 const GATE_X = MAP_W - 88;
 const GATE_Y = PATH_Y;
@@ -133,10 +137,9 @@ const GRADE_COLOR: Record<Grade, string> = {
   C: '#FB7185',
 };
 
-// 玩家形态光环层数 = 已通关层数（0-8）；移动端直接关闭（无限旋转动画）
+// 玩家形态光环层数 = 已通关层数（0-8）；静态模式/移动端直接关闭（无限旋转动画）
 function HaloRings({ count, accent }: { count: number; accent: string }) {
-  const isMobile = useIsMobile();
-  if (count <= 0 || isMobile) return null;
+  if (count <= 0 || STATIC_MODE) return null;
   return (
     <>
       {Array.from({ length: Math.min(count, 4) }).map((_, i) => (
@@ -157,6 +160,9 @@ function HaloRings({ count, accent }: { count: number; accent: string }) {
     </>
   );
 }
+
+// 静态模式下角色移动逐节点停顿缩短（无走动动画，仅保留轻微节奏）
+const STEP_MS = STATIC_MODE ? 160 : 700;
 
 // ============ 主组件 ============
 
@@ -190,6 +196,40 @@ export default function TowerMap() {
   const [deck, setDeck] = useState<'cards' | 'graph' | null>(null); // 全息操作台：卡片 / 图谱
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const flashTimer = useRef(0);
+  // 到达闪光定时器：卸载时清理，避免悬挂回调与内存泄漏
+  useEffect(() => () => window.clearTimeout(flashTimer.current), []);
+  // 单屏自适应：按地图区「宽度 + 高度」双约束等比缩放整条航线画布
+  // 桌面 / 横屏：宽度约束生效 → 8 层星球平铺整页宽、一屏内全部可见（无横向滚动、无暗色边框）
+  // 窄屏：缩放到 MIN_MAP_SCALE 保底，低于保底才出现横向滚动（保证星球与文字可读）
+  const areaRef = useRef<HTMLDivElement>(null);
+  const [mapScale, setMapScale] = useState(1);
+  const [needScroll, setNeedScroll] = useState(false);
+  useEffect(() => {
+    const el = areaRef.current;
+    if (!el) return;
+    let raf = 0;
+    // rAF 合帧 + 同值守卫：避免 ResizeObserver 连续触发导致 setState 风暴与整树重渲染
+    const fit = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const w = el.clientWidth;
+        const h = el.clientHeight;
+        if (w <= 0 || h <= 0) return;
+        const fitScale = Math.min(w / MAP_W, h / MAP_H);
+        const next = Math.max(fitScale, MIN_MAP_SCALE);
+        setMapScale((prev) => (Math.abs(prev - next) > 0.002 ? next : prev));
+        setNeedScroll(next > fitScale + 0.002);
+      });
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, []);
   const clearedCount = useMemo(() => nodes.filter((n) => n.state === 'cleared').length, [nodes]);
 
   // 已解锁路径长度（像素）：用于路径点亮动画
@@ -207,11 +247,11 @@ export default function TowerMap() {
     setPathTicks((t) => (t.includes(currentIdx) ? t : [...t, currentIdx]));
   }, [currentIdx]);
 
-  // 挂载后定位到当前层（1F 在左侧，向右攀登）
+  // 挂载后定位到航线起点（保证 1F 首屏可见；高层节点通过右侧导航舱/左右滚动到达）
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollLeft = Math.max(0, nodes[currentIdx].x - el.clientWidth / 2);
+    el.scrollLeft = 0;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -244,7 +284,7 @@ export default function TowerMap() {
       // 自动滚动跟随（水平）
       const targetNode = nodes[targetIdx];
       scrollRef.current?.scrollTo({
-        left: targetNode.x - scrollRef.current.clientWidth / 2,
+        left: targetNode.x * mapScale - scrollRef.current.clientWidth / 2,
         behavior: 'smooth',
       });
 
@@ -254,17 +294,18 @@ export default function TowerMap() {
         sound.step();
         setPlayerNodeIdx(next);
         setPathTicks((t) => (t.includes(next) ? t : [...t, next]));
-        // 冲刺 420ms + 停顿 280ms，一步一顿的压迫节奏
-        await new Promise((r) => setTimeout(r, 420 + 280));
+        // 冲刺 420ms + 停顿 280ms，一步一顿的压迫节奏（静态模式缩短为 160ms）
+        await new Promise((r) => setTimeout(r, STEP_MS));
       }
       // 到达闪光
       setArrivalFlash(targetIdx);
       sound.click();
-      window.setTimeout(() => setArrivalFlash(null), 900);
+      window.clearTimeout(flashTimer.current);
+      flashTimer.current = window.setTimeout(() => setArrivalFlash(null), 900);
       setWalking(false);
       walkingRef.current = false;
     },
-    [walking, playerNodeIdx, nodes, sound],
+    [walking, playerNodeIdx, nodes, sound, mapScale],
   );
 
   const handleNodeClick = useCallback(
@@ -272,12 +313,9 @@ export default function TowerMap() {
       if (node.state === 'locked') return;
       sound.click();
       void walkTo(idx);
-      // 当前可挑战节点 → 弹出详情
-      if (node.state === 'current') {
-        // 等走完再弹出挑战框
-        const steps = Math.abs(idx - playerNodeIdx);
-        setTimeout(() => setSelected(node), steps * 700 + 350);
-      }
+      // 所有已解锁楼层（含已通关/当前）都可打开详情学习，无访问限制；等角色走完再弹窗
+      const steps = Math.abs(idx - playerNodeIdx);
+      setTimeout(() => setSelected(node), steps * STEP_MS + 120);
     },
     [walkTo, playerNodeIdx, sound],
   );
@@ -286,10 +324,10 @@ export default function TowerMap() {
     const node = nodes[idx];
     if (!node) return;
     scrollRef.current?.scrollTo({
-      left: node.x - (scrollRef.current?.clientWidth ?? 0) / 2,
+      left: node.x * mapScale - (scrollRef.current?.clientWidth ?? 0) / 2,
       behavior: 'smooth',
     });
-  }, [nodes]);
+  }, [nodes, mapScale]);
 
   const playerNode = nodes[playerNodeIdx];
   const avatarMeta = player?.avatarId ?? 'keyboard';
@@ -299,18 +337,18 @@ export default function TowerMap() {
   if (!player) return null;
 
   return (
-    // min-h-screen + overflow-y-auto：允许页面上下滚动，底部操作台不被视口锁死截断
-    <div className="relative min-h-screen overflow-y-auto">
+    // 单屏布局：与标题、底部操作台同处一个平面，flex 列填满剩余高度，无垂直滚动
+    <div className="relative flex min-h-0 flex-1 flex-col">
       {/* ===== 小地图导航（右侧全息导航舱，与滚动控制统一风格） ===== */}
       <div
-        className="pointer-events-auto absolute right-2 top-2 z-30 rounded-2xl border backdrop-blur-md"
+        className="pointer-events-auto absolute right-1.5 top-1.5 z-30 rounded-2xl border backdrop-blur-md"
         style={{
           borderColor: 'rgba(34, 211, 238, 0.22)',
           background: 'rgba(7, 12, 24, 0.72)',
           boxShadow: '0 0 18px rgba(34, 211, 238, 0.10)',
         }}
       >
-        <div className="flex flex-col gap-1 p-1.5">
+        <div className="flex flex-col gap-0.5 p-1">
           {nodes.map((n, i) => (
             <button
               key={n.floor.id}
@@ -320,7 +358,7 @@ export default function TowerMap() {
               }}
               title={`${n.floor.index}F ${n.floor.name}`}
               aria-label={`定位到 ${n.floor.index}F`}
-              className="relative flex h-8 w-8 items-center justify-center rounded-full border font-mono text-[11px] transition-all hover:scale-105 active:scale-90"
+              className="relative flex h-7 w-7 items-center justify-center rounded-full border font-mono text-[10px] transition-all hover:scale-105 active:scale-90"
               style={{
                 borderColor:
                   i === playerNodeIdx ? accent : `${STATE_COLOR[n.state]}66`,
@@ -340,52 +378,59 @@ export default function TowerMap() {
         </div>
       </div>
 
-      {/* ===== 地图区（含左右滚动按钮，底部为全息操作台预留安全区间隔） ===== */}
-      <div
-        className="relative"
-        style={{ marginBottom: 'calc(100px + env(safe-area-inset-bottom))' }}
-      >
-      {/* ===== 航线滚动控制（地图下角，与迷你导航统一的全息圆钮风格） ===== */}
-      <div className="pointer-events-none absolute bottom-4 left-2 z-20">
-        <button
-          onClick={() =>
-            scrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
-          }
-          aria-label="向左滚动"
-          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md text-[#8FD8EF] transition-all hover:scale-105 hover:text-neon-cyan active:scale-90 md:h-10 md:w-10"
-          style={{
-            borderColor: 'rgba(34, 211, 238, 0.35)',
-            background: 'rgba(12, 17, 32, 0.85)',
-            boxShadow: '0 0 14px rgba(34, 211, 238, 0.16)',
-          }}
-        >
-          <ChevronLeft size={18} />
-        </button>
-      </div>
-      <div className="pointer-events-none absolute bottom-4 right-2 z-20">
-        <button
-          onClick={() =>
-            scrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
-          }
-          aria-label="向右滚动"
-          className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md text-[#8FD8EF] transition-all hover:scale-105 hover:text-neon-cyan active:scale-90 md:h-10 md:w-10"
-          style={{
-            borderColor: 'rgba(34, 211, 238, 0.35)',
-            background: 'rgba(12, 17, 32, 0.85)',
-            boxShadow: '0 0 14px rgba(34, 211, 238, 0.16)',
-          }}
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
+      {/* ===== 地图区（自适应填满标题与操作台之间的全部高度） ===== */}
+      <div ref={areaRef} className="relative min-h-0 flex-1">
+      {/* ===== 航线滚动控制（仅在窄屏保底缩放、需要横向滚动时出现） ===== */}
+      {needScroll && (
+        <>
+          <div className="pointer-events-none absolute bottom-4 left-2 z-20">
+            <button
+              onClick={() =>
+                scrollRef.current?.scrollBy({ left: -320, behavior: 'smooth' })
+              }
+              aria-label="向左滚动"
+              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md text-[#8FD8EF] transition-all hover:scale-105 hover:text-neon-cyan active:scale-90 md:h-10 md:w-10"
+              style={{
+                borderColor: 'rgba(34, 211, 238, 0.35)',
+                background: 'rgba(12, 17, 32, 0.85)',
+                boxShadow: '0 0 14px rgba(34, 211, 238, 0.16)',
+              }}
+            >
+              <ChevronLeft size={18} />
+            </button>
+          </div>
+          <div className="pointer-events-none absolute bottom-4 right-2 z-20">
+            <button
+              onClick={() =>
+                scrollRef.current?.scrollBy({ left: 320, behavior: 'smooth' })
+              }
+              aria-label="向右滚动"
+              className="pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur-md text-[#8FD8EF] transition-all hover:scale-105 hover:text-neon-cyan active:scale-90 md:h-10 md:w-10"
+              style={{
+                borderColor: 'rgba(34, 211, 238, 0.35)',
+                background: 'rgba(12, 17, 32, 0.85)',
+                boxShadow: '0 0 14px rgba(34, 211, 238, 0.16)',
+              }}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
+        </>
+      )}
 
-      {/* ===== 横向星域航线地图（1F 左侧 → 8F 右侧） ===== */}
+      {/* ===== 横向星域航线地图（1F 左侧 → 8F 右侧；等比缩放铺满整页宽，1F~8F 一屏全部可见） ===== */}
       <div
         ref={scrollRef}
-        className="h-[480px] overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{ touchAction: 'pan-x', width: '100vw', marginLeft: 'calc(50% - 50vw)' }}
+        className={`flex h-full w-full items-center [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${
+          needScroll ? 'justify-start overflow-x-auto' : 'justify-center overflow-x-hidden'
+        }`}
+        style={{ overflowY: 'hidden', touchAction: 'pan-x' }}
       >
-        <div className="relative" style={{ width: MAP_W, height: MAP_H }}>
+        <div className="relative shrink-0" style={{ width: MAP_W * mapScale, height: MAP_H * mapScale }}>
+          <div
+            className="absolute left-0 top-0 origin-top-left"
+            style={{ width: MAP_W, height: MAP_H, transform: `scale(${mapScale})` }}
+          >
           {/* 连线层 */}
           <svg
             className="absolute inset-0"
@@ -485,8 +530,8 @@ export default function TowerMap() {
                 ))}
               </>
             )}
-            {/* 能量波：白色/金色光脉冲沿光束流动（移动端关闭，消除逐帧 dashoffset 重绘） */}
-            {!isMobile && (
+            {/* 能量波：白色/金色光脉冲沿光束流动（静态模式/移动端关闭） */}
+            {!STATIC_MODE && !isMobile && (
               <>
                 <motion.path
                   d={pathD}
@@ -522,9 +567,9 @@ export default function TowerMap() {
             const bossQid = node.floor.questionIds[node.floor.questionIds.length - 1];
             const bossCleared = !!player.questionRecords[bossQid]?.bestGrade && isPassed(player.questionRecords[bossQid].bestGrade);
             const isCurrentNode = i === playerNodeIdx;
-            // 每层专属星球：尺寸 / 光带层数 / 亮度随状态递进
+            // 每层专属星球：尺寸 / 光带层数 / 亮度随状态递进（放大铺满纵向视口）
             const planetSize =
-              node.state === 'current' ? 200 : node.state === 'cleared' ? 168 : 128;
+              node.state === 'current' ? 212 : node.state === 'cleared' ? 184 : 148;
 
             return (
               <div
@@ -574,12 +619,12 @@ export default function TowerMap() {
                     background: `radial-gradient(circle, ${color}${node.state === 'locked' ? '20' : '26'}, transparent 70%)`,
                   }}
                   animate={
-                    node.state === 'current' && !isMobile
+                    node.state === 'current' && !STATIC_MODE && !isMobile
                       ? { scale: [1, 1.18, 1], opacity: [0.7, 1, 0.7] }
                       : { scale: 1, opacity: 0.8 }
                   }
                   transition={
-                    node.state === 'current' && !isMobile
+                    node.state === 'current' && !STATIC_MODE && !isMobile
                       ? { duration: 2, repeat: Infinity, ease: 'easeInOut' }
                       : {}
                   }
@@ -600,7 +645,7 @@ export default function TowerMap() {
                       const FloorIcon = FLOOR_ICON[node.floor.icon] ?? Code2;
                       return (
                         <span
-                          className="flex h-6 w-6 items-center justify-center rounded-lg border backdrop-blur-md"
+                          className="flex h-6 w-6 items-center justify-center rounded-lg border"
                           style={{
                             borderColor: `${color}88`,
                             color: node.state === 'locked' ? '#7C8DA1' : color,
@@ -613,7 +658,7 @@ export default function TowerMap() {
                       );
                     })()}
                     <div
-                      className="font-display rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-bold tracking-wider backdrop-blur-md"
+                      className="font-display rounded-full border px-2.5 py-0.5 font-mono text-[11px] font-bold tracking-wider"
                       style={{
                         borderColor: `${color}88`,
                         color: node.state === 'locked' ? '#7C8DA1' : color,
@@ -637,8 +682,8 @@ export default function TowerMap() {
                             : undefined,
                     }}
                   >
-                    {/* 当前可挑战：巨大能量环（双环反向旋转，移动端关闭，保留静态虚线环） */}
-                    {node.state === 'current' && !isMobile && (
+                    {/* 当前可挑战：巨大能量环（双环反向旋转，静态模式/移动端关闭） */}
+                    {node.state === 'current' && !STATIC_MODE && !isMobile && (
                       <>
                         <motion.div
                           className="pointer-events-none absolute -inset-5 rounded-full"
@@ -735,8 +780,8 @@ export default function TowerMap() {
                   {node.state === 'current' && isBoss && !bossCleared && node.clearedCount >= node.totalCount - 1 && (
                     <motion.div
                       className="absolute -top-7 font-mono text-[10px] font-bold tracking-widest text-neon-rose"
-                      animate={isMobile ? { opacity: 1 } : { opacity: [0.5, 1, 0.5], y: [0, -2, 0] }}
-                      transition={{ duration: 1.4, repeat: isMobile ? 0 : Infinity }}
+                      animate={STATIC_MODE || isMobile ? { opacity: 1 } : { opacity: [0.5, 1, 0.5], y: [0, -2, 0] }}
+                      transition={{ duration: 1.4, repeat: STATIC_MODE || isMobile ? 0 : Infinity }}
                     >
                       BOSS
                     </motion.div>
@@ -747,8 +792,8 @@ export default function TowerMap() {
                 {node.state === 'locked' && (
                   <motion.div
                     className="pointer-events-none absolute -inset-16"
-                    animate={isMobile ? { opacity: 0.9 } : { x: [-5, 5, -5], opacity: [0.8, 0.95, 0.8] }}
-                    transition={{ duration: 7, repeat: isMobile ? 0 : Infinity, ease: 'easeInOut' }}
+                    animate={STATIC_MODE || isMobile ? { opacity: 0.9 } : { x: [-5, 5, -5], opacity: [0.8, 0.95, 0.8] }}
+                    transition={{ duration: 7, repeat: STATIC_MODE || isMobile ? 0 : Infinity, ease: 'easeInOut' }}
                   >
                     <div
                       className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full"
@@ -790,11 +835,11 @@ export default function TowerMap() {
                       : 'linear-gradient(0deg, #FBBF2414, transparent 70%)',
                 }}
                 animate={
-                  clearedCount >= 8 && !isMobile
+                  clearedCount >= 8 && !STATIC_MODE && !isMobile
                     ? { boxShadow: ['0 0 24px #FBBF2455', '0 0 46px #FBBF2499', '0 0 24px #FBBF2455'] }
                     : { boxShadow: clearedCount >= 8 ? '0 0 30px #FBBF2477' : '0 0 16px #FBBF2422' }
                 }
-                transition={{ duration: 2.2, repeat: isMobile ? 0 : Infinity }}
+                transition={{ duration: 2.2, repeat: STATIC_MODE || isMobile ? 0 : Infinity }}
               >
                 {clearedCount >= 8 ? (
                   <DoorOpen size={22} className="text-neon-gold" />
@@ -826,8 +871,8 @@ export default function TowerMap() {
             >
               {/* 呼吸浮动（行走时由角色自带颠簸，外层不做浮动） */}
               <motion.div
-                animate={walking || isMobile ? { y: 0 } : { y: [0, -5, 0] }}
-                transition={{ duration: 2.2, repeat: isMobile ? 0 : Infinity, ease: 'easeInOut' }}
+                animate={walking || STATIC_MODE || isMobile ? { y: 0 } : { y: [0, -5, 0] }}
+                transition={{ duration: 2.2, repeat: STATIC_MODE || isMobile ? 0 : Infinity, ease: 'easeInOut' }}
                 className="relative flex flex-col items-center"
               >
                 {/* 成长光环 */}
@@ -846,12 +891,12 @@ export default function TowerMap() {
                 <motion.div
                   className="mt-1 h-1.5 w-8 rounded-full"
                   style={{ background: `${accent}44`, filter: 'blur(3px)' }}
-                  animate={isMobile ? { scaleX: 1 } : { scaleX: walking ? [1, 0.8, 1] : [1, 0.9, 1] }}
-                  transition={{ duration: walking ? 0.45 : 2.2, repeat: isMobile ? 0 : Infinity }}
+                  animate={STATIC_MODE || isMobile ? { scaleX: 1 } : { scaleX: walking ? [1, 0.8, 1] : [1, 0.9, 1] }}
+                  transition={{ duration: walking ? 0.45 : 2.2, repeat: STATIC_MODE || isMobile ? 0 : Infinity }}
                 />
                 {/* 昵称牌 */}
                 <div
-                  className="mt-1 whitespace-nowrap rounded-full border px-2 py-0.5 font-mono text-[10px] backdrop-blur-md"
+                  className="mt-1 whitespace-nowrap rounded-full border px-2 py-0.5 font-mono text-[10px]"
                   style={{
                     borderColor: `${accent}55`,
                     color: accent,
@@ -863,6 +908,7 @@ export default function TowerMap() {
               </motion.div>
             </motion.div>
           )}
+          </div>
         </div>
       </div>
       </div>

@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { STATIC_MODE } from '../lib/staticMode';
 
 interface TitleProps {
   text: string;
@@ -19,14 +20,14 @@ export default function HoloTitle({ text, latin, className = '' }: TitleProps) {
           background:
             'radial-gradient(ellipse 62% 68% at 50% 50%, rgba(79,227,255,0.2), rgba(34,211,238,0.08) 55%, transparent 72%)',
         }}
-        animate={{ opacity: [0.55, 1, 0.55] }}
-        transition={{ duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
+        animate={{ opacity: STATIC_MODE ? 0.85 : [0.55, 1, 0.55] }}
+        transition={STATIC_MODE ? undefined : { duration: 5.2, repeat: Infinity, ease: 'easeInOut' }}
       />
 
-      {/* 主标题（呼吸辉光） */}
+      {/* 主标题（静态辉光，呼吸动画由全局静态规则关闭） */}
       <h1
-        className="holo-title font-display relative font-normal"
-        style={{ letterSpacing: '0.08em', animation: 'neon-breathe 5.2s ease-in-out infinite' }}
+        className="holo-title font-display relative"
+        style={{ letterSpacing: '0.08em' }}
       >
         {text}
       </h1>
@@ -61,8 +62,8 @@ export function HoloSubtitle({ text, className = '' }: { text: string; className
   return (
     <motion.div
       className={`relative inline-block ${className}`}
-      animate={{ opacity: [0.88, 1, 0.88] }}
-      transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+      animate={{ opacity: STATIC_MODE ? 1 : [0.88, 1, 0.88] }}
+      transition={STATIC_MODE ? undefined : { duration: 4, repeat: Infinity, ease: 'easeInOut' }}
     >
       <span className="metal-text font-display font-normal" style={{ letterSpacing: '0.14em' }}>
         {text}
@@ -71,8 +72,8 @@ export function HoloSubtitle({ text, className = '' }: { text: string; className
         aria-hidden
         className="absolute -bottom-1 left-1/2 h-[2px] w-4/5 -translate-x-1/2 rounded-full"
         style={{ background: 'linear-gradient(90deg, transparent, #4FE3FF, #22D3EE, transparent)' }}
-        animate={{ opacity: [0.3, 0.95, 0.3], scaleX: [0.85, 1, 0.85] }}
-        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        animate={STATIC_MODE ? { opacity: 0.7 } : { opacity: [0.3, 0.95, 0.3], scaleX: [0.85, 1, 0.85] }}
+        transition={STATIC_MODE ? undefined : { duration: 4, repeat: Infinity, ease: 'easeInOut' }}
       />
     </motion.div>
   );

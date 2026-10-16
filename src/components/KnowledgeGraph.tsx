@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { graphEdges, graphNodes } from '../data/knowledgeGraph';
 import { getFloor } from '../data/floors';
+import { STATIC_MODE } from '../lib/staticMode';
 import { getProjectCard } from '../data/projectCards';
 import { useGameStore } from '../store/useGameStore';
 import useIsMobile from '../hooks/useIsMobile';
@@ -266,8 +267,8 @@ export default function KnowledgeGraph({ onOpenCard }: Props) {
                     fill="none"
                     stroke={color}
                     strokeOpacity="0.5"
-                    animate={{ r: [r + 6, r + 12, r + 6], strokeOpacity: [0.6, 0.15, 0.6] }}
-                    transition={{ duration: 1.6, repeat: Infinity }}
+                    animate={STATIC_MODE ? { strokeOpacity: 0.5 } : { r: [r + 6, r + 12, r + 6], strokeOpacity: [0.6, 0.15, 0.6] }}
+                    transition={STATIC_MODE ? undefined : { duration: 1.6, repeat: Infinity }}
                   />
                 )}
                 <motion.circle

@@ -93,6 +93,7 @@ export default function Exam() {
   useEffect(() => {
     if (phase !== 'running') return;
     const timer = window.setInterval(() => {
+      if (document.hidden) return; // 后台标签页降载：暂停倒计时（切回前台继续）
       setLeft((l) => {
         if (l <= 1) {
           window.clearInterval(timer);
